@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Course {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  category         String
+  shortDescription String
+  description      String
+  level            String
+  duration         String?
+  mode             String
+  fee              String?
+  color            String?
+  isFeatured       Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ContactInquiry {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String
+  courseInterest String?
+  message        String
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  studentName  String
+  studentClass String?
+  message      String
+  rating       Int      @default(5)
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model SiteSetting {
+  id             String  @id @default(cuid())
+  siteName       String
+  tagline        String?
+  phone          String?
+  email          String?
+  address        String?
+  whatsappNumber String?
+  heroTitle      String?
+  heroSubtitle   String?
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
