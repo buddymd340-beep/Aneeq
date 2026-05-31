@@ -18,7 +18,7 @@ export function Testimonials() {
         ))}
       </div>
       <blockquote className="mt-6 text-2xl font-bold leading-10 text-slate-950">
-        "{testimonial.quote}"
+        &ldquo;{testimonial.quote}&rdquo;
       </blockquote>
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
