@@ -49,8 +49,13 @@ class ScraperTests(unittest.TestCase):
         server = ThreadingHTTPServer(("127.0.0.1", 0), TestHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        self.addCleanup(thread.join, 2)
-        self.addCleanup(server.shutdown)
+
+        def stop_server() -> None:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+
+        self.addCleanup(stop_server)
 
         start_url = f"http://127.0.0.1:{server.server_port}/"
         with tempfile.TemporaryDirectory() as directory:
