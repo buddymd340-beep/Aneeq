@@ -20,10 +20,10 @@ local `.env` file or shell environment variables.
 ### Setup
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m playwright install chromium
+python3 -m pip install -r requirements.txt
+python3 -m playwright install chromium
 cp .env.example .env
 ```
 
@@ -64,7 +64,7 @@ Start with one or two questions to confirm the selectors and to avoid changing a
 large amount of attempt history on the site:
 
 ```bash
-python scripts/question_bank_scraper.py \
+python3 scripts/question_bank_scraper.py \
   --config configs/question_bank_scraper.json \
   --max-questions 2 \
   --headful \
@@ -74,7 +74,7 @@ python scripts/question_bank_scraper.py \
 When the test output looks correct, run without `--headful`:
 
 ```bash
-python scripts/question_bank_scraper.py \
+python3 scripts/question_bank_scraper.py \
   --config configs/question_bank_scraper.json \
   --output-json output/questions.json \
   --output-csv output/questions.csv
