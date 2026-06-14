@@ -1,0 +1,37 @@
+{
+  "base_url": "https://example.com",
+  "login": {
+    "url": "https://example.com/login",
+    "username_env": "QUESTION_BANK_USERNAME",
+    "password_env": "QUESTION_BANK_PASSWORD",
+    "username_selector": "input[name='username']",
+    "password_selector": "input[name='password']",
+    "submit_selector": "button[type='submit']",
+    "post_login_selector": ".dashboard, nav, a[href*='logout']",
+    "post_login_timeout_ms": 15000
+  },
+  "questions": {
+    "start_url": "https://example.com/questions",
+    "question_link_selector": "a.question-link",
+    "next_page_selector": "a[rel='next']",
+    "max_pages": 1,
+    "max_questions": 5
+  },
+  "question_page": {
+    "question_selector": ".question, [data-question]",
+    "option_selector": ".option, label.answer-option",
+    "option_text_selector": null,
+    "option_click_selector": "input[type='radio'], input[type='checkbox'], button",
+    "submit_after_option_selector": null,
+    "feedback_selector": ".feedback, .result, .answer-status",
+    "wait_after_click_ms": 800,
+    "reload_between_options": true,
+    "explanation_sections": {
+      "explanation": ".explanation",
+      "question_management": ".question-management",
+      "other_option_explanation": ".other-option-explanation",
+      "summary": ".summary",
+      "reference": ".reference, .references"
+    }
+  }
+}
