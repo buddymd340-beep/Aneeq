@@ -4,14 +4,20 @@ const { test } = require("node:test");
 const {
   QUESTIONS,
   answerActiveQuestion,
+  createAccount,
   createDefaultState,
   createStudySession,
+  cycleTranslationLanguage,
   filterQuestions,
   finishSession,
   getAllBooks,
   getAllQBanks,
+  getCurrentUser,
   importAdminContent,
+  isAdmin,
   isDueForReview,
+  loginAccount,
+  logoutAccount,
   scoreSession,
   searchContent,
   translateText,
@@ -172,4 +178,43 @@ test("admin upload adds qbanks, questions, and books to study flows", () => {
     [9101],
   );
   assert.ok(searchContent(state, "bradykinesia").some((hit) => hit.id === 9101));
+});
+
+test("local accounts support admin and user roles", () => {
+  const state = createDefaultState();
+  const admin = createAccount(state, {
+    name: "Admin",
+    email: "admin@example.com",
+    password: "pass123",
+    role: "admin",
+  });
+
+  assert.equal(getCurrentUser(state).id, admin.id);
+  assert.equal(isAdmin(state), true);
+
+  logoutAccount(state);
+  assert.equal(getCurrentUser(state), undefined);
+
+  loginAccount(state, {
+    email: "admin@example.com",
+    password: "pass123",
+  });
+  assert.equal(isAdmin(state), true);
+
+  logoutAccount(state);
+  createAccount(state, {
+    name: "Student",
+    email: "student@example.com",
+    password: "pass123",
+    role: "user",
+  });
+  assert.equal(isAdmin(state), false);
+});
+
+test("translation icon cycles question language", () => {
+  const state = createDefaultState();
+
+  assert.equal(state.selectedLanguage, "en");
+  assert.equal(cycleTranslationLanguage(state), "ur");
+  assert.equal(cycleTranslationLanguage(state), "ar");
 });

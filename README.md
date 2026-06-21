@@ -22,6 +22,7 @@ you invest in the full Flutter/Firebase mobile build.
 - Reference book reader with table of contents and clinical boxes.
 - Settings panel matching the guide toggles.
 - Admin Upload panel for importing custom QBank/question/book JSON.
+- Local Admin/User account creation and login.
 - Local translation cache with glossary overrides and side-by-side English.
 - Service worker and manifest so the app can be installed and cached offline.
 
@@ -50,25 +51,28 @@ npm test
 
 ## How to use the MVP
 
-1. Open **Dashboard** to see progress and weak subject trends.
-2. Open **QBank** or **Downloads** and mark banks downloaded for offline use.
-3. Open **Create Test**.
-4. Select count, mode, subject, difficulty, and filter.
-5. Click **Start test**.
-6. In the **Question Reader**:
+1. Create an account:
+   - Choose **Admin / Data uploader** if you need Admin Upload.
+   - Choose **User / Student** for the study app side.
+2. Open **Dashboard** to see progress and weak subject trends.
+3. Open **QBank** or **Downloads** and mark banks downloaded for offline use.
+4. Open **Create Test**.
+5. Select count, mode, subject, difficulty, and filter.
+6. Click **Start test**.
+7. In the **Question Reader**:
    - Pick an answer to reveal correctness and explanation.
    - Favorite or flag a question.
    - Add highlights and notes.
-   - Change the language selector at the top to show a translation banner while
-     keeping original English visible.
-   - Use the AI tutor button for the local tutor prompt mock.
-7. Click **Finish test** to open the score review.
-8. Use **Search**, **Favorites**, and **Books** for review.
-9. Use **Settings** for the guide's behavior toggles and download region.
+   - Tap **TR** to cycle the translation language on the question page.
+   - Tap **AI** to open the local AI tutor prompt mock.
+8. Click **Finish test** to open the score review.
+9. Use **Search**, **Favorites**, and **Books** for review.
+10. Use **Settings** for the guide's behavior toggles and download region.
 
 ## Admin panel: upload your own data
 
-Open **Admin Upload** in the left menu.
+Create/login with an **Admin** account, then open **Admin Upload** in the left
+menu. User accounts cannot access Admin Upload.
 
 You can:
 
@@ -143,6 +147,24 @@ Use this JSON shape:
 
 You can share videos and screenshots here. I will use them to adjust the UI,
 navigation, colors, spacing, and exact screen behavior.
+
+## What I need from you to make it exact
+
+Upload these here:
+
+1. Screen recording video of the app you want to copy.
+2. Screenshots of every important screen:
+   - Login/create account
+   - QBank/database list
+   - Test creator
+   - Question page
+   - Score review
+   - Book reader
+   - Admin/upload screens
+3. The target languages for translation.
+4. Whether AI should use Claude, OpenAI, or another API.
+5. Your logo/app name/colors if different from Aneeq Medical.
+6. Sample real question/book data, or confirm JSON upload is enough for now.
 
 ## Production build steps
 

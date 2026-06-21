@@ -381,6 +381,10 @@
         books: [],
         importedAt: null,
       },
+      auth: {
+        currentUserId: null,
+        accounts: [],
+      },
     };
   }
 
@@ -399,6 +403,13 @@
       customContent: {
         ...defaults.customContent,
         ...(savedState.customContent || {}),
+      },
+      auth: {
+        ...defaults.auth,
+        ...(savedState.auth || {}),
+        accounts: Array.isArray(savedState.auth && savedState.auth.accounts)
+          ? savedState.auth.accounts
+          : [],
       },
     };
   }
@@ -420,6 +431,74 @@
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
+  }
+
+  function normalizeEmail(email) {
+    return String(email || "").trim().toLowerCase();
+  }
+
+  function getCurrentUser(state) {
+    return (state.auth.accounts || []).find(
+      (account) => account.id === state.auth.currentUserId,
+    );
+  }
+
+  function isAdmin(state) {
+    const user = getCurrentUser(state);
+    return Boolean(user && user.role === "admin");
+  }
+
+  function createAccount(state, formData) {
+    const name = String(formData.name || "").trim();
+    const email = normalizeEmail(formData.email);
+    const password = String(formData.password || "");
+    const role = formData.role === "admin" ? "admin" : "user";
+
+    if (!name || !email || !password) {
+      throw new Error("Name, email, and password are required.");
+    }
+    if (password.length < 4) {
+      throw new Error("Password must be at least 4 characters for this demo.");
+    }
+    if ((state.auth.accounts || []).some((account) => account.email === email)) {
+      throw new Error("An account with this email already exists.");
+    }
+
+    const account = {
+      id: `account-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name,
+      email,
+      password,
+      role,
+      createdAt: new Date().toISOString(),
+    };
+    state.auth.accounts.push(account);
+    state.auth.currentUserId = account.id;
+    queueSync(state, "accounts", "INSERT", {
+      id: account.id,
+      email: account.email,
+      role: account.role,
+    });
+    return account;
+  }
+
+  function loginAccount(state, formData) {
+    const email = normalizeEmail(formData.email);
+    const password = String(formData.password || "");
+    const account = (state.auth.accounts || []).find(
+      (item) => item.email === email && item.password === password,
+    );
+    if (!account) {
+      throw new Error("Invalid email or password.");
+    }
+    state.auth.currentUserId = account.id;
+    return account;
+  }
+
+  function logoutAccount(state) {
+    state.auth.currentUserId = null;
+    state.route = "dashboard";
+    state.activeSession = null;
   }
 
   function mergeById(baseItems, customItems) {
@@ -872,6 +951,13 @@
     return translated;
   }
 
+  function cycleTranslationLanguage(state) {
+    const codes = LANGUAGES.map((language) => language.code);
+    const currentIndex = codes.indexOf(state.selectedLanguage);
+    state.selectedLanguage = codes[(currentIndex + 1) % codes.length] || "en";
+    return state.selectedLanguage;
+  }
+
   function searchContent(state, query) {
     const term = String(query || "").trim().toLowerCase();
     if (!term) {
@@ -1162,6 +1248,12 @@
               <h2>Question ${state.activeQuestionIndex + 1} of ${session.qids.length}</h2>
             </div>
             <div class="actions">
+              <button class="icon-button" title="Translate question" data-cycle-translation>
+                TR
+              </button>
+              <button class="icon-button" title="Ask AI tutor" data-ai-explain="${question.id}">
+                AI
+              </button>
               <button class="ghost" data-toggle-favorite="${question.id}">
                 ${state.favorites.includes(question.id) ? "Unfavorite" : "Favorite"}
               </button>
@@ -1548,6 +1640,56 @@
     `;
   }
 
+  function renderAuth() {
+    return `
+      <section class="auth-layout">
+        <article class="card auth-card">
+          <p class="eyebrow">Create account</p>
+          <h2>Admin or User account</h2>
+          <p>Create an admin account to upload/manage data, or a user account to study.</p>
+          <form id="create-account-form">
+            <label>
+              Full name
+              <input name="name" autocomplete="name" placeholder="Your name" required />
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Password
+              <input name="password" type="password" autocomplete="new-password" placeholder="Minimum 4 characters" required />
+            </label>
+            <label>
+              Account type
+              <select name="role">
+                <option value="user">User / Student</option>
+                <option value="admin">Admin / Data uploader</option>
+              </select>
+            </label>
+            <button class="btn" type="submit">Create account</button>
+          </form>
+        </article>
+        <article class="card auth-card">
+          <p class="eyebrow">Login</p>
+          <h2>Existing account</h2>
+          <p>Accounts are stored locally in this MVP. Production builds should use Firebase or Supabase Auth.</p>
+          <form id="login-form">
+            <label>
+              Email
+              <input name="email" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              Password
+              <input name="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button class="btn" type="submit">Login</button>
+          </form>
+        </article>
+      </section>
+    `;
+  }
+
   function documentSafeEmptyState() {
     return `
       <div class="empty-state">
@@ -1558,6 +1700,16 @@
   }
 
   function renderAdmin(state) {
+    if (!isAdmin(state)) {
+      return `
+        <section class="card">
+          <h2>Admin access required</h2>
+          <p>Create or login with an Admin account to upload QBank, question, and book data.</p>
+          <button class="btn" data-logout>Switch account</button>
+        </section>
+      `;
+    }
+
     const content = getCustomContent(state);
     const sample = {
       qbanks: [
@@ -1706,7 +1858,10 @@
     const app = document.getElementById("app");
     const pageTitleNode = document.getElementById("page-title");
     const languageSelect = document.getElementById("language-select");
+    const languagePicker = document.querySelector(".language-picker");
     const syncStatus = document.getElementById("sync-status");
+    const accountStatus = document.getElementById("account-status");
+    const logoutButton = document.getElementById("logout-button");
     const installButton = document.getElementById("install-button");
     let state = loadState();
     let installPrompt;
@@ -1722,12 +1877,37 @@
     }
 
     function render() {
+      const currentUser = getCurrentUser(state);
+      if (!currentUser) {
+        pageTitleNode.textContent = "Account";
+        app.innerHTML = renderAuth();
+        syncStatus.textContent = "Create an Admin or User account to continue.";
+        accountStatus.textContent = "Not logged in";
+        logoutButton.classList.add("hidden");
+        languagePicker.classList.add("hidden");
+        document.querySelectorAll(".nav-link").forEach((button) => {
+          button.classList.remove("active");
+          button.disabled = true;
+          button.classList.toggle("hidden", button.dataset.route === "admin");
+        });
+        return;
+      }
+
+      if (state.route === "admin" && !isAdmin(state)) {
+        state.route = "dashboard";
+      }
+
       pageTitleNode.textContent = pageTitle(state.route);
       app.innerHTML = renderRoute(state);
       syncStatus.textContent = `${state.syncQueue.length} local change${
         state.syncQueue.length === 1 ? "" : "s"
       } waiting for online sync.`;
+      accountStatus.textContent = `${currentUser.name} (${currentUser.role})`;
+      logoutButton.classList.remove("hidden");
+      languagePicker.classList.toggle("hidden", state.route !== "reader");
       document.querySelectorAll(".nav-link").forEach((button) => {
+        button.disabled = false;
+        button.classList.toggle("hidden", button.dataset.route === "admin" && !isAdmin(state));
         button.classList.toggle("active", button.dataset.route === state.route);
       });
       languageSelect.value = state.selectedLanguage;
@@ -1743,8 +1923,17 @@
     document.querySelector(".nav-list").addEventListener("click", (event) => {
       const button = event.target.closest("[data-route]");
       if (button) {
+        if (!getCurrentUser(state)) {
+          alert("Create or login to an account first.");
+          return;
+        }
         setRoute(button.dataset.route);
       }
+    });
+
+    logoutButton.addEventListener("click", () => {
+      logoutAccount(state);
+      persistAndRender();
     });
 
     languageSelect.addEventListener("change", () => {
@@ -1753,6 +1942,28 @@
     });
 
     app.addEventListener("submit", (event) => {
+      if (event.target.id === "create-account-form") {
+        event.preventDefault();
+        const formData = formDataToObject(new FormData(event.target));
+        try {
+          createAccount(state, formData);
+          persistAndRender();
+        } catch (error) {
+          alert(error.message);
+        }
+      }
+
+      if (event.target.id === "login-form") {
+        event.preventDefault();
+        const formData = formDataToObject(new FormData(event.target));
+        try {
+          loginAccount(state, formData);
+          persistAndRender();
+        } catch (error) {
+          alert(error.message);
+        }
+      }
+
       if (event.target.id === "test-form") {
         event.preventDefault();
         const formData = new FormData(event.target);
@@ -1780,6 +1991,10 @@
 
       if (event.target.id === "admin-upload-form") {
         event.preventDefault();
+        if (!isAdmin(state)) {
+          alert("Admin account required.");
+          return;
+        }
         const formData = new FormData(event.target);
         const rawJson = String(formData.get("json") || "").trim();
         if (!rawJson) {
@@ -1928,6 +2143,14 @@
         return;
       }
 
+      if (event.target.closest("[data-cycle-translation]")) {
+        const language = cycleTranslationLanguage(state);
+        const selected = LANGUAGES.find((item) => item.code === language);
+        persistAndRender();
+        alert(`Translation language: ${selected ? selected.native : language}`);
+        return;
+      }
+
       const copyButton = event.target.closest("[data-copy-qids]");
       if (copyButton) {
         await navigator.clipboard.writeText(copyButton.dataset.copyQids);
@@ -1951,6 +2174,12 @@
 
       if (event.target.closest("[data-reset-state]")) {
         state = createDefaultState();
+        persistAndRender();
+        return;
+      }
+
+      if (event.target.closest("[data-logout]")) {
+        logoutAccount(state);
         persistAndRender();
         return;
       }
@@ -2041,17 +2270,23 @@
     QUESTIONS,
     addHighlight,
     answerActiveQuestion,
+    createAccount,
     createDefaultState,
     createStudySession,
+    cycleTranslationLanguage,
     filterQuestions,
     finishSession,
     getQuestionStatus,
     getAllBooks,
     getAllQBanks,
     getAllQuestions,
+    getCurrentUser,
     hashText,
     importAdminContent,
+    isAdmin,
     isDueForReview,
+    loginAccount,
+    logoutAccount,
     normalizeAdminPayload,
     scoreSession,
     searchContent,

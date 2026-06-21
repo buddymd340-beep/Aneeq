@@ -45,6 +45,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 290px 1fr;
@@ -176,6 +181,18 @@ button {
   justify-content: flex-end;
 }
 
+.account-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--primary-strong);
+  background: rgba(15, 118, 110, 0.1);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
 .language-picker {
   display: grid;
   gap: 6px;
@@ -187,6 +204,17 @@ button {
 .content {
   display: grid;
   gap: 20px;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.auth-card {
+  min-height: 100%;
 }
 
 .grid {
@@ -319,7 +347,8 @@ button {
 
 .btn,
 .ghost,
-.danger {
+.danger,
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -350,6 +379,19 @@ button {
   color: #fff;
   background: var(--red);
   border: 1px solid var(--red);
+}
+
+.icon-button {
+  width: 46px;
+  padding: 0;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--blue));
+  border: 0;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.2);
+}
+
+.icon-button:hover {
+  filter: brightness(0.95);
 }
 
 form {
