@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aneeq Encrypted File Viewer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Aneeq</p>
+        <h1>Decrypt an uploaded file and view it safely in your browser.</h1>
+        <p>
+          Files are decrypted locally with Web Crypto. The decrypted file is never
+          sent to a server.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="decrypt-title">
+        <h2 id="decrypt-title">Decrypt file</h2>
+        <form id="decrypt-form">
+          <label>
+            Encrypted file
+            <input id="encrypted-file" type="file" required />
+          </label>
+
+          <label>
+            Password
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              placeholder="Enter the file password"
+            />
+          </label>
+
+          <details>
+            <summary>Advanced options for raw AES-GCM files</summary>
+            <p>
+              Use these only when your encrypted file is raw ciphertext instead
+              of the JSON envelope documented below.
+            </p>
+            <div class="grid">
+              <label>
+                Salt (base64)
+                <input id="salt" type="text" placeholder="Required for raw files" />
+              </label>
+              <label>
+                IV / nonce (base64)
+                <input id="iv" type="text" placeholder="Required for raw files" />
+              </label>
+              <label>
+                PBKDF2 iterations
+                <input id="iterations" type="number" min="1" value="210000" />
+              </label>
+              <label>
+                Decrypted MIME type
+                <input id="mime-type" type="text" placeholder="text/plain" />
+              </label>
+              <label>
+                Decrypted filename
+                <input id="file-name" type="text" placeholder="decrypted-file" />
+              </label>
+              <label class="checkbox">
+                <input id="ciphertext-base64" type="checkbox" />
+                Raw file content is base64 ciphertext
+              </label>
+            </div>
+          </details>
+
+          <button type="submit">Decrypt and view</button>
+        </form>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card preview-card" aria-labelledby="preview-title">
+        <div class="preview-header">
+          <div>
+            <p class="eyebrow">Preview</p>
+            <h2 id="preview-title">No decrypted file yet</h2>
+          </div>
+          <a id="download-link" class="download hidden">Download decrypted file</a>
+        </div>
+        <div id="preview" class="preview empty">
+          Upload an encrypted file and enter its password to preview the decrypted
+          result here.
+        </div>
+      </section>
+
+      <section class="card docs" aria-labelledby="format-title">
+        <h2 id="format-title">Supported encrypted JSON envelope</h2>
+        <p>
+          For automatic decryption, upload a UTF-8 JSON file with this structure:
+        </p>
+        <pre><code>{
+  "version": 1,
+  "algorithm": "AES-GCM",
+  "kdf": "PBKDF2",
+  "hash": "SHA-256",
+  "iterations": 210000,
+  "salt": "base64-salt",
+  "iv": "base64-iv",
+  "ciphertext": "base64-ciphertext-with-gcm-tag",
+  "mimeType": "text/plain",
+  "fileName": "document.txt"
+}</code></pre>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
