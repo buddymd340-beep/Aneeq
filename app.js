@@ -1475,7 +1475,7 @@
         event.preventDefault();
         const formData = new FormData(event.target);
         try {
-          createStudySession(state, Object.fromEntries(formData.entries()));
+          createStudySession(state, formDataToObject(formData));
           persistAndRender();
         } catch (error) {
           alert(error.message);
@@ -1651,13 +1651,45 @@
       }
     });
 
-    if ("serviceWorker" in navigator) {
+    if (!isNativeShell() && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js").catch(() => {
         syncStatus.textContent = "Service worker registration failed.";
       });
     }
 
     render();
+  }
+
+  function isNativeShell() {
+    return Boolean(
+      typeof window !== "undefined" &&
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === "function" &&
+        window.Capacitor.isNativePlatform(),
+    );
+  }
+
+  function showBootError(error) {
+    const app = typeof document !== "undefined" && document.getElementById("app");
+    if (!app) {
+      return;
+    }
+
+    app.innerHTML = `
+      <section class="card">
+        <h2>App startup problem</h2>
+        <p>The app could not start on this device WebView.</p>
+        <pre>${escapeHtml(error && error.message ? error.message : String(error))}</pre>
+      </section>
+    `;
+  }
+
+  function formDataToObject(formData) {
+    const data = {};
+    formData.forEach((value, key) => {
+      data[key] = value;
+    });
+    return data;
   }
 
   const exported = {
@@ -1685,8 +1717,13 @@
   }
 
   if (typeof document !== "undefined") {
-    initializeBrowserApp();
+    try {
+      initializeBrowserApp();
+    } catch (error) {
+      showBootError(error);
+    }
   }
 
-  globalThis.AneeqMedical = exported;
+  const root = typeof globalThis !== "undefined" ? globalThis : window;
+  root.AneeqMedical = exported;
 })();
