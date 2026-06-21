@@ -4,7 +4,15 @@
   "private": true,
   "description": "Offline-first medical QBank study app MVP.",
   "scripts": {
+    "build:web": "node tools/build-web.js",
     "start": "python3 -m http.server 8000",
-    "test": "node --test"
+    "test": "node --test",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "apk:debug": "npm run android:sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
   }
 }
