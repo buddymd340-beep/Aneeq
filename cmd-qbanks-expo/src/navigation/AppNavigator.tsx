@@ -20,7 +20,7 @@ const Tabs = createBottomTabNavigator<MainTabParamList>();
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   return (
-    <Text style={{ fontSize: 12, fontWeight: "800", opacity: focused ? 1 : 0.55 }}>
+    <Text style={{ fontSize: 23, fontWeight: "900", opacity: focused ? 1 : 0.55 }}>
       {label}
     </Text>
   );
@@ -35,10 +35,22 @@ function MainTabs() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.muted,
         tabBarStyle: {
+          position: "absolute",
+          left: 80,
+          right: 80,
+          bottom: 16,
           backgroundColor: theme.card,
           borderTopColor: theme.border,
-          minHeight: 70,
-          paddingTop: 8,
+          minHeight: 64,
+          paddingTop: 6,
+          paddingBottom: 8,
+          borderRadius: 34,
+          borderWidth: 1,
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 5,
         },
         tabBarLabelStyle: {
           fontWeight: "800",
@@ -49,27 +61,27 @@ function MainTabs() {
       <Tabs.Screen
         name="Titles"
         component={TitlesScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="TI" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="⌕" /> }}
       />
       <Tabs.Screen
         name="Databases"
         component={DatabasesScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="DB" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="▤" /> }}
       />
       <Tabs.Screen
         name="Favorites"
         component={FavoritesScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="FA" /> }}
+        options={{ title: "Bookmarks", tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="★" /> }}
       />
       <Tabs.Screen
         name="Contents"
         component={ContentsScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="CO" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="⌕" /> }}
       />
       <Tabs.Screen
         name="Account"
         component={AccountScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="AC" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="♟" /> }}
       />
     </Tabs.Navigator>
   );
@@ -87,18 +99,18 @@ export function AppNavigator() {
     >
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="CreateTest" component={CreateTestScreen} options={{ title: "Create Test" }} />
+      <Stack.Screen name="CreateTest" component={CreateTestScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="QuestionTest"
         component={QuestionTestScreen}
-        options={{ title: "Question Reader" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="PreviousTests"
         component={PreviousTestsScreen}
-        options={{ title: "Previous Tests" }}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: "Progress" }} />
+      <Stack.Screen name="Progress" component={ProgressScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

@@ -1,67 +1,120 @@
-import { StyleSheet, Text, useColorScheme, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from "react-native";
+import Svg, { Circle, Rect, Text as SvgText } from "react-native-svg";
 
-import { BodyText, Card, Grid, Screen, SectionTitle } from "../components/Layout";
 import { getTheme } from "../theme/theme";
 
 const subjects = [
-  { name: "Cardiology", progress: 62, correct: 78 },
-  { name: "Infectious Disease", progress: 44, correct: 68 },
-  { name: "Emergency Medicine", progress: 38, correct: 59 },
-  { name: "Pulmonary", progress: 31, correct: 71 },
+  { name: "Obstetrics & Gynecology", progress: 95, color: "#7FB795" },
+  { name: "Surgery", progress: 87, color: "#4DB42C" },
+  { name: "Pediatrics", progress: 81, color: "#BD6BCF" },
+  { name: "Medicine", progress: 78, color: "#609BD0" },
+  { name: "Psychiatry", progress: 4, color: "#12B52E" },
 ];
 
 export function ProgressScreen() {
   const theme = getTheme(useColorScheme());
   return (
-    <Screen title="Progress">
-      <Grid>
-        <Card>
-          <SectionTitle>Overall Progress</SectionTitle>
-          <View style={[styles.donut, { borderColor: theme.primary }]}>
-            <Text style={[styles.donutText, { color: theme.text }]}>38%</Text>
-            <BodyText muted>Used</BodyText>
+    <View style={[styles.root, { backgroundColor: "#FFFFFF" }]}>
+      <View style={[styles.nav, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <Pressable style={styles.circle}>
+          <Text style={styles.circleText}>‹</Text>
+        </Pressable>
+        <Text style={styles.navTitle}>Your Progress</Text>
+        <Pressable style={styles.circle}>
+          <Text style={styles.home}>⌂</Text>
+        </Pressable>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.chartCard}>
+          <Text style={styles.cardTitle}>Overall Progress: 76%</Text>
+          <View style={styles.progressTrack}>
+            <View style={styles.progressFill} />
           </View>
-          <BodyText>Total questions 2400 - Used 912 - Correct 657 - Incorrect 255</BodyText>
-        </Card>
-
-        <Card>
-          <SectionTitle>Donut Chart</SectionTitle>
+          <View style={styles.stats}>
+            <Stat label="Total" value="4089" />
+            <Stat label="Used" value="3121" />
+            <Stat label="Corr" value="1935" />
+            <Stat label="Incorr" value="1186" />
+          </View>
+          <View style={styles.donutWrap}>
+            <Svg width={240} height={240} viewBox="0 0 240 240">
+              <Circle cx={120} cy={120} r={76} stroke="#858585" strokeWidth={54} fill="none" />
+              <Circle
+                cx={120}
+                cy={120}
+                r={76}
+                stroke="#008000"
+                strokeWidth={54}
+                fill="none"
+                strokeDasharray="224 477"
+                rotation="-90"
+                origin="120,120"
+              />
+              <Circle
+                cx={120}
+                cy={120}
+                r={76}
+                stroke="#FF1010"
+                strokeWidth={54}
+                fill="none"
+                strokeDasharray="138 477"
+                strokeDashoffset="-224"
+                rotation="-90"
+                origin="120,120"
+              />
+              <Circle cx={120} cy={120} r={50} fill="#F8FAFC" />
+              <SvgText x={50} y={78} fill="#FFFFFF" fontSize="13">Unused</SvgText>
+              <SvgText x={158} y={124} fill="#FFFFFF" fontSize="13">Correct</SvgText>
+              <SvgText x={40} y={178} fill="#FFFFFF" fontSize="13">Incorrect</SvgText>
+            </Svg>
+          </View>
           <View style={styles.legend}>
-            <Legend color={theme.primary} label="Correct 657" />
-            <Legend color={theme.destructive} label="Incorrect 255" />
-            <Legend color={theme.border} label="Unused 1488" />
+            <Legend color="#008000" label="Correct (47%)" />
+            <Legend color="#FF1010" label="Incorrect (29%)" />
+            <Legend color="#858585" label="Unused (23%)" />
           </View>
-        </Card>
-      </Grid>
+        </View>
 
-      <Card>
-        <SectionTitle>Subject progress bar chart</SectionTitle>
-        {subjects.map((subject) => (
-          <View key={subject.name} style={styles.subjectRow}>
-            <Text style={[styles.subject, { color: theme.text }]}>{subject.name}</Text>
-            <View style={[styles.track, { backgroundColor: theme.background }]}>
-              <View style={[styles.fill, { width: `${subject.progress}%`, backgroundColor: theme.primary }]} />
-            </View>
-            <Text style={[styles.percent, { color: theme.muted }]}>{subject.progress}%</Text>
-          </View>
-        ))}
-      </Card>
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Subjects Progress</Text>
+          <Svg width="100%" height={310} viewBox="0 0 560 310">
+            {[0, 1, 2, 3, 4].map((line) => (
+              <Rect key={line} x={45} y={40 + line * 50} width={470} height={1} fill="#B9BEC7" />
+            ))}
+            {subjects.map((subject, index) => {
+              const x = 58 + index * 94;
+              const height = subject.progress * 2.1;
+              return (
+                <Rect
+                  key={subject.name}
+                  x={x}
+                  y={250 - height}
+                  width={72}
+                  height={height}
+                  fill={subject.color}
+                />
+              );
+            })}
+            {subjects.map((subject, index) => (
+              <SvgText
+                key={`${subject.name}-label`}
+                x={58 + index * 94}
+                y={270}
+                fill="#111827"
+                fontSize="9"
+              >
+                {subject.name.split(" ")[0]} ({subject.progress}%)
+              </SvgText>
+            ))}
+          </Svg>
+        </View>
 
-      <Grid>
-        <Card>
-          <SectionTitle>Weak subjects</SectionTitle>
-          <BodyText>Emergency Medicine, Infectious Disease</BodyText>
-        </Card>
-        <Card>
-          <SectionTitle>Weak topics</SectionTitle>
-          <BodyText>Aortic dissection, Endocarditis, Pulmonary embolism</BodyText>
-        </Card>
-        <Card>
-          <SectionTitle>Performance by system</SectionTitle>
-          <BodyText muted>Cardiovascular 78%, Pulmonary 71%, Renal 64%</BodyText>
-        </Card>
-      </Grid>
-    </Screen>
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Subjects Correct Percentage</Text>
+          <Text style={styles.muted}>Weak subjects and weak topics are listed here in production.</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -69,61 +122,127 @@ function Legend({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text>{label}</Text>
+      <Text style={styles.legendText}>{label}</Text>
+    </View>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  donut: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 18,
-    alignSelf: "center",
+  root: {
+    flex: 1,
+  },
+  nav: {
+    height: 74,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  circle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F6F6F6",
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 12,
   },
-  donutText: {
+  circleText: {
     fontSize: 34,
-    fontWeight: "900",
+    lineHeight: 34,
+  },
+  home: {
+    fontSize: 25,
+  },
+  navTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  content: {
+    backgroundColor: "#F4F5F8",
+    padding: 18,
+    paddingBottom: 108,
+    gap: 18,
+  },
+  chartCard: {
+    backgroundColor: "#F0F2F7",
+    borderRadius: 8,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 14,
+  },
+  progressTrack: {
+    height: 26,
+    backgroundColor: "#D8DCE5",
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  progressFill: {
+    width: "76%",
+    height: "100%",
+    backgroundColor: "#0A84FF",
+  },
+  stats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 12,
+  },
+  stat: {
+    alignItems: "center",
+  },
+  statLabel: {
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  statValue: {
+    fontSize: 16,
+    marginTop: 3,
+  },
+  donutWrap: {
+    alignItems: "center",
   },
   legend: {
-    gap: 14,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   legendItem: {
     flexDirection: "row",
-    gap: 10,
     alignItems: "center",
+    gap: 5,
   },
   legendDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 8,
+    height: 8,
   },
-  subjectRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
+  legendText: {
+    fontSize: 11,
   },
-  subject: {
-    width: 170,
+  chartTitle: {
+    textAlign: "center",
     fontWeight: "800",
+    fontSize: 18,
+    marginBottom: 8,
   },
-  track: {
-    flex: 1,
-    height: 12,
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-  },
-  percent: {
-    width: 44,
-    textAlign: "right",
-    fontWeight: "800",
+  muted: {
+    color: "#8A8D96",
+    textAlign: "center",
   },
 });

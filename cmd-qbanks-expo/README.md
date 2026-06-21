@@ -28,14 +28,31 @@ visual matching once screenshots/video are uploaded.
 
 - Login/Register
 - Titles
-- Databases
+- Databases styled as the uploaded grouped section list
 - Create Test
-- Question/Test Reader
-- Previous Tests
-- Progress
+- Question/Test Reader styled as the uploaded QBank reader
+- Previous Tests styled with green score circles
+- Progress styled with progress card, donut chart, and subject chart
 - Favorites
 - Contents
-- Account/Settings
+- Account/Settings styled as the uploaded settings list
+
+## Uploaded screenshot behavior implemented
+
+- Account screen: gold VIP status bar, expiry row, green subscription action,
+  grouped settings rows, switches, server rows, and green/blue/red utility
+  actions.
+- Databases screen: centered title, Edit button, rounded search field, recent
+  section, grouped database sections, icons, and thin dividers.
+- Previous Tests: plain list rows with Q count/mode/date, Copy QIDs/Delete
+  actions, and green score circles.
+- Progress: overall progress percent, total/used/correct/incorrect values,
+  donut-style chart, legend, and subject progress bar chart.
+- Question reader: fixed top title, large readable stem, radio choices with
+  percentages, correct/incorrect box, explanation text, circular bottom toolbar,
+  and tappable blue medical term.
+- Blue term/image behavior: tapping the blue term or gallery icon opens a
+  full-screen black image viewer with a portal venous system diagram placeholder.
 
 ## Included modules
 
@@ -163,10 +180,10 @@ Modes:
 
 The helper preserves HTML tags and keeps medical terms in English brackets.
 
-## What I still need for exact design matching
+## What I still need for further exact design matching
 
-No screenshots/video files are currently available in the upload folder. Please
-upload:
+The current implementation is based on the screenshots shared in chat. For more
+precision, upload:
 
 1. Login/register screenshot
 2. Titles/home screenshot
