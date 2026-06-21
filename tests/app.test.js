@@ -8,6 +8,9 @@ const {
   createStudySession,
   filterQuestions,
   finishSession,
+  getAllBooks,
+  getAllQBanks,
+  importAdminContent,
   isDueForReview,
   scoreSession,
   searchContent,
@@ -116,4 +119,57 @@ test("scoreSession handles unanswered questions", () => {
   assert.equal(score.answered, 0);
   assert.equal(score.correct, 0);
   assert.equal(score.total, 2);
+});
+
+test("admin upload adds qbanks, questions, and books to study flows", () => {
+  const state = createDefaultState();
+  importAdminContent(state, {
+    qbanks: [
+      {
+        id: "admin-neuro",
+        title: "Admin Neuro",
+        questions: 1,
+        subjects: ["Neurology"],
+      },
+    ],
+    questions: [
+      {
+        id: 9101,
+        qbankId: "admin-neuro",
+        subject: "Neurology",
+        difficulty: 2,
+        stem: "A patient has a resting tremor and bradykinesia. Which neurotransmitter is decreased?",
+        choices: ["Dopamine", "Serotonin", "Histamine"],
+        correctIndex: 0,
+        explanation: "Parkinson disease involves decreased dopamine in the substantia nigra.",
+        tags: ["parkinson", "dopamine"],
+      },
+    ],
+    books: [
+      {
+        id: "admin-book",
+        title: "Admin Neurology Notes",
+        chapters: [
+          {
+            id: "front",
+            title: "Movement disorders",
+            nodes: [
+              {
+                type: "paragraph",
+                text: "Parkinson disease causes bradykinesia and resting tremor.",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.ok(getAllQBanks(state).some((bank) => bank.id === "admin-neuro"));
+  assert.ok(getAllBooks(state).some((book) => book.id === "admin-book"));
+  assert.deepEqual(
+    filterQuestions(state, { subject: "Neurology" }).map((question) => question.id),
+    [9101],
+  );
+  assert.ok(searchContent(state, "bradykinesia").some((hit) => hit.id === 9101));
 });

@@ -375,6 +375,12 @@
       activeBookId: BOOKS[0].id,
       activeChapterId: BOOKS[0].chapters[0].id,
       searchQuery: "",
+      customContent: {
+        qbanks: [],
+        questions: [],
+        books: [],
+        importedAt: null,
+      },
     };
   }
 
@@ -390,6 +396,10 @@
         ...(savedState.questionHistory || {}),
       },
       translations: { ...defaults.translations, ...(savedState.translations || {}) },
+      customContent: {
+        ...defaults.customContent,
+        ...(savedState.customContent || {}),
+      },
     };
   }
 
@@ -412,6 +422,170 @@
     }
   }
 
+  function mergeById(baseItems, customItems) {
+    const merged = new Map();
+    baseItems.forEach((item) => merged.set(String(item.id), item));
+    customItems.forEach((item) => merged.set(String(item.id), item));
+    return [...merged.values()];
+  }
+
+  function getCustomContent(state) {
+    return {
+      qbanks: Array.isArray(state.customContent && state.customContent.qbanks)
+        ? state.customContent.qbanks
+        : [],
+      questions: Array.isArray(state.customContent && state.customContent.questions)
+        ? state.customContent.questions
+        : [],
+      books: Array.isArray(state.customContent && state.customContent.books)
+        ? state.customContent.books
+        : [],
+      importedAt: state.customContent && state.customContent.importedAt,
+    };
+  }
+
+  function getAllQBanks(state) {
+    return mergeById(QBANKS, getCustomContent(state || {}).qbanks);
+  }
+
+  function getAllQuestions(state) {
+    return mergeById(QUESTIONS, getCustomContent(state || {}).questions);
+  }
+
+  function getAllBooks(state) {
+    return mergeById(BOOKS, getCustomContent(state || {}).books);
+  }
+
+  function normalizeAdminPayload(payload) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("Admin upload must be a JSON object.");
+    }
+
+    const qbanks = Array.isArray(payload.qbanks) ? payload.qbanks : [];
+    const questions = Array.isArray(payload.questions) ? payload.questions : [];
+    const books = Array.isArray(payload.books) ? payload.books : [];
+
+    if (qbanks.length === 0 && questions.length === 0 && books.length === 0) {
+      throw new Error("JSON must include at least one of: qbanks, questions, or books.");
+    }
+
+    return {
+      qbanks: qbanks.map(normalizeQBank),
+      questions: questions.map(normalizeQuestion),
+      books: books.map(normalizeBook),
+      importedAt: new Date().toISOString(),
+    };
+  }
+
+  function normalizeQBank(bank) {
+    if (!bank || typeof bank !== "object") {
+      throw new Error("Each qbank must be an object.");
+    }
+    if (!bank.id || !bank.title) {
+      throw new Error("Each qbank needs id and title.");
+    }
+
+    return {
+      id: String(bank.id),
+      title: String(bank.title),
+      questions: Number(bank.questions || 0),
+      size: String(bank.size || "Custom upload"),
+      region: String(bank.region || "Admin"),
+      subjects: Array.isArray(bank.subjects) ? bank.subjects.map(String) : [],
+      description: String(bank.description || "Uploaded by admin."),
+    };
+  }
+
+  function normalizeQuestion(question) {
+    if (!question || typeof question !== "object") {
+      throw new Error("Each question must be an object.");
+    }
+    if (!question.id || !question.qbankId || !question.stem) {
+      throw new Error("Each question needs id, qbankId, and stem.");
+    }
+    if (!Array.isArray(question.choices) || question.choices.length < 2) {
+      throw new Error(`Question ${question.id} needs at least two choices.`);
+    }
+
+    const correctIndex = Number(question.correctIndex);
+    if (
+      !Number.isInteger(correctIndex) ||
+      correctIndex < 0 ||
+      correctIndex >= question.choices.length
+    ) {
+      throw new Error(`Question ${question.id} has an invalid correctIndex.`);
+    }
+
+    return {
+      id: Number(question.id),
+      qbankId: String(question.qbankId),
+      subject: String(question.subject || "General"),
+      difficulty: Number(question.difficulty || 1),
+      sourceRef: String(question.sourceRef || question.source_ref || "Admin upload"),
+      stem: String(question.stem),
+      choices: question.choices.map(String),
+      correctIndex,
+      explanation: String(question.explanation || ""),
+      incorrectExplanations: Array.isArray(question.incorrectExplanations)
+        ? question.incorrectExplanations.map(String)
+        : question.choices.map((_, index) =>
+            index === correctIndex ? "Correct." : "Review the explanation.",
+          ),
+      tags: Array.isArray(question.tags) ? question.tags.map(String) : [],
+    };
+  }
+
+  function normalizeBook(book) {
+    if (!book || typeof book !== "object") {
+      throw new Error("Each book must be an object.");
+    }
+    if (!book.id || !book.title || !Array.isArray(book.chapters)) {
+      throw new Error("Each book needs id, title, and chapters.");
+    }
+
+    return {
+      id: String(book.id),
+      title: String(book.title),
+      lastPosition: String(book.lastPosition || book.chapters[0].id || "front"),
+      chapters: book.chapters.map((chapter) => ({
+        id: String(chapter.id),
+        title: String(chapter.title),
+        nodes: Array.isArray(chapter.nodes)
+          ? chapter.nodes.map((node) => ({
+              type: String(node.type || "paragraph"),
+              level: Number(node.level || 2),
+              title: node.title ? String(node.title) : undefined,
+              text: node.text ? String(node.text) : "",
+              items: Array.isArray(node.items) ? node.items.map(String) : undefined,
+            }))
+          : [],
+      })),
+    };
+  }
+
+  function importAdminContent(state, payload, mode = "merge") {
+    const normalized = normalizeAdminPayload(payload);
+    const current = mode === "replace" ? createDefaultState().customContent : getCustomContent(state);
+    state.customContent = {
+      qbanks: mergeById(current.qbanks, normalized.qbanks),
+      questions: mergeById(current.questions, normalized.questions),
+      books: mergeById(current.books, normalized.books),
+      importedAt: normalized.importedAt,
+    };
+
+    normalized.qbanks.forEach((bank) => {
+      state.downloads[bank.id] = { downloaded: true, progress: 100 };
+    });
+
+    queueSync(state, "admin_content", "UPSERT", {
+      qbanks: normalized.qbanks.length,
+      questions: normalized.questions.length,
+      books: normalized.books.length,
+      mode,
+    });
+    return state.customContent;
+  }
+
   function queueSync(state, tableName, op, payload) {
     state.syncQueue.push({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -428,13 +602,15 @@
         .filter(([, entry]) => entry.downloaded)
         .map(([id]) => id),
     );
-    return QUESTIONS.filter((question) => downloaded.has(question.qbankId)).map(
+    return getAllQuestions(state).filter((question) => downloaded.has(question.qbankId)).map(
       (question) => question.id,
     );
   }
 
-  function getQuestionById(questionId) {
-    return QUESTIONS.find((question) => question.id === Number(questionId));
+  function getQuestionById(questionId, state) {
+    return getAllQuestions(state || createDefaultState()).find(
+      (question) => question.id === Number(questionId),
+    );
   }
 
   function getQuestionStatus(question, state) {
@@ -445,13 +621,13 @@
     return history.isCorrect ? "correct" : "incorrect";
   }
 
-  function uniqueSubjects() {
-    return [...new Set(QUESTIONS.map((question) => question.subject))].sort();
+  function uniqueSubjects(state) {
+    return [...new Set(getAllQuestions(state || createDefaultState()).map((question) => question.subject))].sort();
   }
 
   function filterQuestions(state, filters = {}) {
     const downloadedIds = new Set(getDownloadedQuestionIds(state));
-    let results = QUESTIONS.filter((question) => downloadedIds.has(question.id));
+    let results = getAllQuestions(state).filter((question) => downloadedIds.has(question.id));
 
     if (filters.subject && filters.subject !== "All") {
       results = results.filter((question) => question.subject === filters.subject);
@@ -509,7 +685,7 @@
         ? options.customQuestionIds.split(",").map((value) => Number(value.trim()))
         : questions.map((question) => question.id);
     const qids = count
-      .filter((questionId) => getQuestionById(questionId))
+      .filter((questionId) => getQuestionById(questionId, state))
       .slice(0, options.count === "custom" ? undefined : Number(options.count || 10));
 
     if (qids.length === 0) {
@@ -536,7 +712,7 @@
     }
 
     const questionId = session.qids[state.activeQuestionIndex];
-    const question = getQuestionById(questionId);
+    const question = getQuestionById(questionId, state);
     const isCorrect = Number(choiceIndex) === question.correctIndex;
     session.answers[questionId] = {
       choiceIndex: Number(choiceIndex),
@@ -597,7 +773,7 @@
     }
 
     state.activeSession.completedAt = new Date().toISOString();
-    const score = scoreSession(state.activeSession);
+    const score = scoreSession(state.activeSession, getAllQuestions(state));
     state.attempts.unshift({
       id: state.activeSession.id,
       completedAt: state.activeSession.completedAt,
@@ -709,7 +885,7 @@
       body: `${question.stem} ${question.explanation}`,
     }));
 
-    const bookHits = BOOKS.flatMap((book) =>
+    const bookHits = getAllBooks(state).flatMap((book) =>
       book.chapters.flatMap((chapter) =>
         chapter.nodes
           .map((node) => {
@@ -780,7 +956,7 @@
     const downloadedCount = Object.values(state.downloads).filter(
       (entry) => entry.downloaded,
     ).length;
-    const dueCount = QUESTIONS.filter((question) => isDueForReview(question, state)).length;
+    const dueCount = getAllQuestions(state).filter((question) => isDueForReview(question, state)).length;
     const lastAttempt = state.attempts[0];
     return `
       <section class="grid">
@@ -814,11 +990,11 @@
       <section class="card">
         <h2>Weak subject trends</h2>
         <div class="list">
-          ${uniqueSubjects()
+          ${uniqueSubjects(state)
             .map((subject) => {
               const answered = Object.entries(state.questionHistory)
                 .map(([questionId, history]) => ({
-                  question: getQuestionById(questionId),
+                  question: getQuestionById(questionId, state),
                   history,
                 }))
                 .filter((entry) => entry.question && entry.question.subject === subject);
@@ -848,7 +1024,7 @@
         <h2>QBank browser</h2>
         <p>Browse licensed QBanks. Downloaded banks are available without network access.</p>
         <div class="list">
-          ${QBANKS.map((bank) => {
+          ${getAllQBanks(state).map((bank) => {
             const download = state.downloads[bank.id] || { downloaded: false, progress: 0 };
             return `
               <article class="list-item">
@@ -886,7 +1062,7 @@
     `;
   }
 
-  function renderTestCreator() {
+  function renderTestCreator(state) {
     return `
       <section class="card">
         <h2>Custom test creator</h2>
@@ -914,7 +1090,7 @@
               Subject
               <select name="subject">
                 <option>All</option>
-                ${uniqueSubjects()
+                ${uniqueSubjects(state)
                   .map((subject) => `<option>${escapeHtml(subject)}</option>`)
                   .join("")}
               </select>
@@ -965,7 +1141,7 @@
 
     const session = state.activeSession;
     const questionId = session.qids[state.activeQuestionIndex];
-    const question = getQuestionById(questionId);
+    const question = getQuestionById(questionId, state);
     const answer = session.answers[question.id];
     const translatedStem = translateText(
       state,
@@ -1134,7 +1310,7 @@
           <div class="list">
             ${attempt.score.results
               .map((result) => {
-                const question = getQuestionById(result.questionId);
+                const question = getQuestionById(result.questionId, state);
                 return `
                   <div class="list-item">
                     <div class="list-item-header">
@@ -1192,7 +1368,9 @@
   }
 
   function renderFavorites(state) {
-    const favorites = state.favorites.map(getQuestionById).filter(Boolean);
+    const favorites = state.favorites
+      .map((questionId) => getQuestionById(questionId, state))
+      .filter(Boolean);
     return `
       <section class="card">
         <h2>Saved favorites</h2>
@@ -1221,7 +1399,8 @@
   }
 
   function renderBooks(state) {
-    const activeBook = BOOKS.find((book) => book.id === state.activeBookId) || BOOKS[0];
+    const books = getAllBooks(state);
+    const activeBook = books.find((book) => book.id === state.activeBookId) || books[0];
     const activeChapter =
       activeBook.chapters.find((chapter) => chapter.id === state.activeChapterId) ||
       activeBook.chapters[0];
@@ -1232,7 +1411,7 @@
           <label>
             Book
             <select id="book-select">
-              ${BOOKS.map(
+              ${books.map(
                 (book) =>
                   `<option value="${book.id}" ${
                     book.id === activeBook.id ? "selected" : ""
@@ -1292,7 +1471,7 @@
         <h2>Downloads manager</h2>
         <p>Files are represented as local packages in this MVP. Production apps should store downloaded SQLite DB files in the device documents directory.</p>
         <div class="list">
-          ${QBANKS.map((bank) => {
+          ${getAllQBanks(state).map((bank) => {
             const download = state.downloads[bank.id] || { downloaded: false, progress: 0 };
             return `
               <article class="list-item">
@@ -1378,6 +1557,106 @@
     `;
   }
 
+  function renderAdmin(state) {
+    const content = getCustomContent(state);
+    const sample = {
+      qbanks: [
+        {
+          id: "admin-cardiology",
+          title: "Admin Cardiology Upload",
+          questions: 1,
+          size: "JSON",
+          region: "Admin",
+          subjects: ["Cardiology"],
+          description: "Questions uploaded from the admin panel.",
+        },
+      ],
+      questions: [
+        {
+          id: 9001,
+          qbankId: "admin-cardiology",
+          subject: "Cardiology",
+          difficulty: 2,
+          sourceRef: "Admin import",
+          stem: "A patient has chest pain relieved by nitroglycerin. Which vessel is most often affected in classic angina?",
+          choices: ["Left anterior descending artery", "Pulmonary artery", "Portal vein", "Renal artery"],
+          correctIndex: 0,
+          explanation: "Classic angina is usually due to coronary artery atherosclerosis; the LAD is commonly involved.",
+          incorrectExplanations: ["Correct.", "Pulmonary disease causes different symptoms.", "Portal vein disease does not cause angina.", "Renal artery disease causes hypertension."],
+          tags: ["angina", "coronary artery"],
+        },
+      ],
+      books: [
+        {
+          id: "admin-notes",
+          title: "Admin Uploaded Notes",
+          chapters: [
+            {
+              id: "front",
+              title: "Imported Chapter",
+              nodes: [
+                {
+                  type: "heading",
+                  level: 2,
+                  text: "Admin content",
+                },
+                {
+                  type: "paragraph",
+                  text: "Paste your book paragraphs, clinical boxes, and lists into this JSON format.",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    return `
+      <section class="grid two">
+        <article class="card">
+          <h2>Admin panel - upload data</h2>
+          <p>Import QBanks, questions, and books as JSON. Uploaded content is saved locally on this device and appears in QBank, tests, search, and books.</p>
+          <form id="admin-upload-form">
+            <label>
+              JSON file
+              <input id="admin-file" type="file" accept="application/json,.json" />
+            </label>
+            <label>
+              Paste JSON
+              <textarea id="admin-json" name="json" placeholder="Paste qbanks/questions/books JSON here"></textarea>
+            </label>
+            <label>
+              Import mode
+              <select name="mode">
+                <option value="merge">Merge with existing uploads</option>
+                <option value="replace">Replace previous uploads</option>
+              </select>
+            </label>
+            <div class="actions">
+              <button class="btn" type="submit">Import data</button>
+              <button class="ghost" type="button" data-export-admin>Export uploaded JSON</button>
+              <button class="danger" type="button" data-clear-admin>Clear uploaded data</button>
+            </div>
+          </form>
+        </article>
+        <aside class="card">
+          <h2>Uploaded content</h2>
+          <div class="grid">
+            ${renderMetric("QBanks", content.qbanks.length, "Admin uploads")}
+            ${renderMetric("Questions", content.questions.length, "Imported items")}
+            ${renderMetric("Books", content.books.length, "Reference uploads")}
+          </div>
+          <p>${content.importedAt ? `Last import: ${formatDate(content.importedAt)}` : "No admin upload yet."}</p>
+        </aside>
+      </section>
+      <section class="card">
+        <h2>JSON format example</h2>
+        <p>You can send me screenshots/videos and I will convert the structure to match your exact app. For now, upload JSON using this format:</p>
+        <pre>${escapeHtml(JSON.stringify(sample, null, 2))}</pre>
+      </section>
+    `;
+  }
+
   function renderRoute(state) {
     switch (state.route) {
       case "qbank":
@@ -1396,6 +1675,8 @@
         return renderBooks(state);
       case "downloads":
         return renderDownloads(state);
+      case "admin":
+        return renderAdmin(state);
       case "settings":
         return renderSettings(state);
       case "dashboard":
@@ -1415,6 +1696,7 @@
       favorites: "Favorites",
       books: "Reference Books",
       downloads: "Downloads",
+      admin: "Admin Upload",
       settings: "Settings",
     };
     return titles[route] || "Dashboard";
@@ -1495,6 +1777,28 @@
         );
         persistAndRender();
       }
+
+      if (event.target.id === "admin-upload-form") {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const rawJson = String(formData.get("json") || "").trim();
+        if (!rawJson) {
+          alert("Choose a JSON file or paste JSON first.");
+          return;
+        }
+
+        try {
+          importAdminContent(
+            state,
+            JSON.parse(rawJson),
+            String(formData.get("mode") || "merge"),
+          );
+          persistAndRender();
+          alert("Admin data imported successfully.");
+        } catch (error) {
+          alert(error.message);
+        }
+      }
     });
 
     app.addEventListener("input", (event) => {
@@ -1530,9 +1834,23 @@
 
       if (event.target.id === "book-select") {
         state.activeBookId = event.target.value;
-        const book = BOOKS.find((item) => item.id === state.activeBookId);
+        const book = getAllBooks(state).find((item) => item.id === state.activeBookId);
         state.activeChapterId = book.chapters[0].id;
         persistAndRender();
+      }
+
+      if (event.target.id === "admin-file") {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+          return;
+        }
+
+        file.text().then((text) => {
+          const textarea = document.getElementById("admin-json");
+          if (textarea) {
+            textarea.value = text;
+          }
+        });
       }
     });
 
@@ -1603,7 +1921,7 @@
 
       const aiButton = event.target.closest("[data-ai-explain]");
       if (aiButton) {
-        const question = getQuestionById(aiButton.dataset.aiExplain);
+        const question = getQuestionById(aiButton.dataset.aiExplain, state);
         alert(
           `${buildTutorPrompt(question)}\n\nLocal tutor draft: Focus on the key clue, identify the tested mechanism, then eliminate each distractor using the explanation text. Production builds should call Claude API and cache the response per QID.`,
         );
@@ -1634,6 +1952,29 @@
       if (event.target.closest("[data-reset-state]")) {
         state = createDefaultState();
         persistAndRender();
+        return;
+      }
+
+      if (event.target.closest("[data-clear-admin]")) {
+        getCustomContent(state).qbanks.forEach((bank) => {
+          delete state.downloads[bank.id];
+        });
+        state.customContent = createDefaultState().customContent;
+        queueSync(state, "admin_content", "DELETE", { cleared: true });
+        persistAndRender();
+        return;
+      }
+
+      if (event.target.closest("[data-export-admin]")) {
+        const blob = new Blob([JSON.stringify(getCustomContent(state), null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "aneeq-admin-upload.json";
+        link.click();
+        URL.revokeObjectURL(url);
       }
     });
 
@@ -1705,8 +2046,13 @@
     filterQuestions,
     finishSession,
     getQuestionStatus,
+    getAllBooks,
+    getAllQBanks,
+    getAllQuestions,
     hashText,
+    importAdminContent,
     isDueForReview,
+    normalizeAdminPayload,
     scoreSession,
     searchContent,
     translateText,

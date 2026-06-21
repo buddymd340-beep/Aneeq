@@ -21,6 +21,7 @@ you invest in the full Flutter/Firebase mobile build.
 - Favorites list.
 - Reference book reader with table of contents and clinical boxes.
 - Settings panel matching the guide toggles.
+- Admin Upload panel for importing custom QBank/question/book JSON.
 - Local translation cache with glossary overrides and side-by-side English.
 - Service worker and manifest so the app can be installed and cached offline.
 
@@ -64,6 +65,84 @@ npm test
 7. Click **Finish test** to open the score review.
 8. Use **Search**, **Favorites**, and **Books** for review.
 9. Use **Settings** for the guide's behavior toggles and download region.
+
+## Admin panel: upload your own data
+
+Open **Admin Upload** in the left menu.
+
+You can:
+
+1. Choose a `.json` file, or paste JSON into the text box.
+2. Select **Merge** or **Replace previous uploads**.
+3. Click **Import data**.
+4. Imported QBanks appear in **QBank** and **Downloads**.
+5. Imported questions appear in **Create Test**, **Question Reader**, and
+   **Search**.
+6. Imported books appear in **Books** and **Search**.
+
+Use this JSON shape:
+
+```json
+{
+  "qbanks": [
+    {
+      "id": "admin-cardiology",
+      "title": "Admin Cardiology",
+      "questions": 1,
+      "size": "JSON",
+      "region": "Admin",
+      "subjects": ["Cardiology"],
+      "description": "Uploaded by admin"
+    }
+  ],
+  "questions": [
+    {
+      "id": 9001,
+      "qbankId": "admin-cardiology",
+      "subject": "Cardiology",
+      "difficulty": 2,
+      "sourceRef": "Admin import",
+      "stem": "Question stem goes here",
+      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],
+      "correctIndex": 0,
+      "explanation": "Explanation goes here",
+      "incorrectExplanations": ["Correct.", "Why B is wrong", "Why C is wrong", "Why D is wrong"],
+      "tags": ["tag one", "tag two"]
+    }
+  ],
+  "books": [
+    {
+      "id": "admin-book",
+      "title": "Admin Book",
+      "chapters": [
+        {
+          "id": "front",
+          "title": "Chapter title",
+          "nodes": [
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Heading text"
+            },
+            {
+              "type": "paragraph",
+              "text": "Paragraph text"
+            },
+            {
+              "type": "clinicalBox",
+              "title": "Clinical Box",
+              "text": "Clinical content"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+You can share videos and screenshots here. I will use them to adjust the UI,
+navigation, colors, spacing, and exact screen behavior.
 
 ## Production build steps
 

@@ -216,6 +216,16 @@ button {
   color: var(--muted);
 }
 
+.card pre {
+  max-height: 520px;
+  overflow: auto;
+  padding: 16px;
+  color: #e2e8f0;
+  background: #0f172a;
+  border-radius: 16px;
+  white-space: pre-wrap;
+}
+
 .metric {
   display: grid;
   gap: 10px;
