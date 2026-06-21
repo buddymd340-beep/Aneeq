@@ -1,0 +1,17 @@
+{
+  "name": "Aneeq Medical Study",
+  "short_name": "Aneeq",
+  "description": "Offline-first medical QBank, reference reader, translation cache, and AI tutor MVP.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#eef4fb",
+  "theme_color": "#102a43",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

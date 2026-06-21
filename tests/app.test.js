@@ -1,105 +1,119 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { webcrypto } = require("node:crypto");
-
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto;
-}
 
 const {
-  bytesToBase64,
-  decryptWithPassword,
-  parseEncryptedPayload,
+  QUESTIONS,
+  answerActiveQuestion,
+  createDefaultState,
+  createStudySession,
+  filterQuestions,
+  finishSession,
+  isDueForReview,
+  scoreSession,
+  searchContent,
+  translateText,
 } = require("../app.js");
 
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-async function encryptForTest(plaintext, password, metadata) {
-  const baseKey = await globalThis.crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-  const key = await globalThis.crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: metadata.salt,
-      iterations: metadata.iterations,
-      hash: metadata.hash,
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt"],
-  );
-  return new Uint8Array(
-    await globalThis.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: metadata.iv },
-      key,
-      encoder.encode(plaintext),
-    ),
-  );
-}
-
-test("decrypts AES-GCM files described by a JSON envelope", async () => {
-  const metadata = {
-    salt: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]),
-    iv: Uint8Array.from([11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-    iterations: 1000,
-    hash: "SHA-256",
-  };
-  const ciphertext = await encryptForTest("hello decrypted world", "secret", metadata);
-  const envelope = {
-    version: 1,
-    algorithm: "AES-GCM",
-    kdf: "PBKDF2",
-    hash: metadata.hash,
-    iterations: metadata.iterations,
-    salt: bytesToBase64(metadata.salt),
-    iv: bytesToBase64(metadata.iv),
-    ciphertext: bytesToBase64(ciphertext),
-    mimeType: "text/plain",
-    fileName: "hello.txt",
-  };
-
-  const payload = parseEncryptedPayload(
-    encoder.encode(JSON.stringify(envelope)).buffer,
-  );
-  const decrypted = await decryptWithPassword(payload, "secret");
-
-  assert.equal(decoder.decode(decrypted), "hello decrypted world");
-  assert.equal(payload.mimeType, "text/plain");
-  assert.equal(payload.fileName, "hello.txt");
-});
-
-test("decrypts raw AES-GCM ciphertext when salt and IV are supplied", async () => {
-  const metadata = {
-    salt: Uint8Array.from([21, 22, 23, 24, 25, 26, 27, 28]),
-    iv: Uint8Array.from([31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42]),
-    iterations: 1000,
-    hash: "SHA-256",
-  };
-  const ciphertext = await encryptForTest("raw ciphertext payload", "top-secret", metadata);
-
-  const payload = parseEncryptedPayload(ciphertext.buffer, {
-    salt: bytesToBase64(metadata.salt),
-    iv: bytesToBase64(metadata.iv),
-    iterations: metadata.iterations,
-    mimeType: "text/plain",
-    fileName: "raw.txt",
+test("creates a filtered tutor session from downloaded questions", () => {
+  const state = createDefaultState();
+  const session = createStudySession(state, {
+    count: "10",
+    mode: "tutor",
+    subject: "Cardiology",
+    difficulty: "All",
+    status: "all",
   });
-  const decrypted = await decryptWithPassword(payload, "top-secret");
 
-  assert.equal(decoder.decode(decrypted), "raw ciphertext payload");
-  assert.equal(payload.source, "raw");
+  assert.equal(state.route, "reader");
+  assert.equal(session.mode, "tutor");
+  assert.deepEqual(session.qids, [101]);
 });
 
-test("raw ciphertext requires salt and IV metadata", () => {
-  assert.throws(
-    () => parseEncryptedPayload(encoder.encode("not-json").buffer),
-    /Provide salt and IV/,
+test("scores answered questions and stores attempt history", () => {
+  const state = createDefaultState();
+  createStudySession(state, {
+    count: "custom",
+    customQuestionIds: "101,102",
+    mode: "timed",
+  });
+
+  answerActiveQuestion(state, 2, 60);
+  state.activeQuestionIndex = 1;
+  answerActiveQuestion(state, 0, 90);
+  const score = finishSession(state);
+
+  assert.equal(score.total, 2);
+  assert.equal(score.correct, 1);
+  assert.equal(score.percent, 50);
+  assert.equal(state.attempts.length, 1);
+  assert.equal(state.route, "score");
+});
+
+test("filters incorrect questions after a wrong answer", () => {
+  const state = createDefaultState();
+  createStudySession(state, {
+    count: "custom",
+    customQuestionIds: "102",
+    mode: "tutor",
+  });
+  answerActiveQuestion(state, 0, 30);
+
+  const incorrect = filterQuestions(state, { status: "incorrect" });
+
+  assert.deepEqual(
+    incorrect.map((question) => question.id),
+    [102],
   );
+});
+
+test("searches downloaded questions and book content", () => {
+  const state = createDefaultState();
+  const hits = searchContent(state, "tricuspid");
+
+  assert.ok(hits.some((hit) => hit.type === "question" && hit.id === 101));
+  assert.ok(hits.some((hit) => hit.type === "book"));
+});
+
+test("translation uses glossary replacements and caches by source hash", () => {
+  const state = createDefaultState();
+  const first = translateText(state, "Fever with heart valve infection", "ur");
+  const syncCount = state.syncQueue.length;
+  const second = translateText(state, "Fever with heart valve infection", "ur");
+
+  assert.match(first, /bukhar \(Fever\)/i);
+  assert.match(first, /dil \(heart\)/i);
+  assert.equal(second, first);
+  assert.equal(state.syncQueue.length, syncCount);
+});
+
+test("wrong answers are scheduled as due before correct answers", () => {
+  const state = createDefaultState();
+  createStudySession(state, {
+    count: "custom",
+    customQuestionIds: "101,102",
+    mode: "tutor",
+  });
+  answerActiveQuestion(state, 0, 40);
+  state.activeQuestionIndex = 1;
+  answerActiveQuestion(state, QUESTIONS.find((question) => question.id === 102).correctIndex, 40);
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 2);
+
+  assert.equal(isDueForReview(QUESTIONS.find((question) => question.id === 101), state, tomorrow), true);
+  assert.equal(isDueForReview(QUESTIONS.find((question) => question.id === 102), state, tomorrow), false);
+});
+
+test("scoreSession handles unanswered questions", () => {
+  const state = createDefaultState();
+  const session = createStudySession(state, {
+    count: "custom",
+    customQuestionIds: "101,102",
+    mode: "reading",
+  });
+  const score = scoreSession(session);
+
+  assert.equal(score.answered, 0);
+  assert.equal(score.correct, 0);
+  assert.equal(score.total, 2);
 });

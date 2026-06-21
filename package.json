@@ -2,8 +2,9 @@
   "name": "aneeq",
   "version": "0.1.0",
   "private": true,
-  "description": "Client-side encrypted file viewer.",
+  "description": "Offline-first medical QBank study app MVP.",
   "scripts": {
+    "start": "python3 -m http.server 8000",
     "test": "node --test"
   }
 }

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Aneeq Medical">
+  <rect width="512" height="512" rx="112" fill="#0f766e"/>
+  <path fill="#ffffff" d="M256 96c20 0 36 16 36 36v88h88c20 0 36 16 36 36s-16 36-36 36h-88v88c0 20-16 36-36 36s-36-16-36-36v-88h-88c-20 0-36-16-36-36s16-36 36-36h88v-88c0-20 16-36 36-36Z"/>
+  <path fill="#bfdbfe" d="M138 382c29 24 68 38 118 38s89-14 118-38c-28 48-67 72-118 72s-90-24-118-72Z"/>
+</svg>
