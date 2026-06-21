@@ -1,5 +1,24 @@
 # Aneeq Medical Study
 
+## CMD Qbanks Expo project
+
+The requested React Native + Expo + TypeScript app is in:
+
+```text
+cmd-qbanks-expo/
+```
+
+Run it with:
+
+```sh
+cd cmd-qbanks-expo
+npm install
+npm run typecheck
+npm start
+```
+
+The older static PWA prototype remains in the repository for reference.
+
 Offline-first medical QBank, reference reader, translation cache, and AI tutor
 MVP based on the uploaded iMD Medical App build guide.
 

@@ -1,0 +1,196 @@
+export const migrations = [
+  {
+    version: 1,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS schema_migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS qbanks (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        exam TEXT,
+        year TEXT,
+        version TEXT,
+        description TEXT,
+        total_questions INTEGER,
+        media_base_path TEXT,
+        db_file_path TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT,
+        updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS subjects (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        name TEXT,
+        question_count INTEGER
+      );`,
+      `CREATE TABLE IF NOT EXISTS systems (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        name TEXT,
+        question_count INTEGER
+      );`,
+      `CREATE TABLE IF NOT EXISTS topics (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        subject_id INTEGER,
+        system_id INTEGER,
+        name TEXT,
+        question_count INTEGER
+      );`,
+      `CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        qid INTEGER,
+        stem_html TEXT,
+        explanation_html TEXT,
+        educational_objective TEXT,
+        correct_answer_id INTEGER,
+        subject_id INTEGER,
+        system_id INTEGER,
+        topic_id INTEGER,
+        difficulty TEXT,
+        question_type INTEGER,
+        question_format_type INTEGER,
+        parent_qid INTEGER,
+        people_taken REAL,
+        correct_taken REAL,
+        correct_percentage INTEGER,
+        created_at TEXT,
+        updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS answers (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        answer_label TEXT,
+        answer_text_html TEXT,
+        is_correct INTEGER DEFAULT 0,
+        correct_percentage INTEGER,
+        explanation_html TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS question_media (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        media_type TEXT,
+        file_name TEXT,
+        file_path TEXT,
+        local_path TEXT,
+        remote_url TEXT,
+        caption TEXT,
+        display_order INTEGER,
+        used_in TEXT,
+        created_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS references (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        ref_title TEXT,
+        ref_link TEXT,
+        ref_type INTEGER
+      );`,
+      `CREATE TABLE IF NOT EXISTS tests (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        title TEXT,
+        qids TEXT,
+        mode TEXT,
+        question_count INTEGER,
+        current_index INTEGER,
+        done INTEGER DEFAULT 0,
+        right_count INTEGER,
+        wrong_count INTEGER,
+        score TEXT,
+        subject_filter TEXT,
+        system_filter TEXT,
+        topic_filter TEXT,
+        difficulty_filter TEXT,
+        created_at TEXT,
+        completed_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS user_logs (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        test_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        selected_answer_id INTEGER,
+        correct_answer_id INTEGER,
+        is_correct INTEGER,
+        time_spent INTEGER,
+        answer_date TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS bookmarks (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        created_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS highlights (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        selected_text TEXT,
+        color TEXT,
+        note TEXT,
+        created_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        note_text TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS ai_explanations (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        ai_summary TEXT,
+        wrong_options_explanation TEXT,
+        memory_hook TEXT,
+        differential_table TEXT,
+        flashcards_json TEXT,
+        created_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS translations (
+        id INTEGER PRIMARY KEY,
+        qbank_id INTEGER,
+        question_id INTEGER,
+        qid INTEGER,
+        language TEXT,
+        translated_stem_html TEXT,
+        translated_explanation_html TEXT,
+        translated_objective TEXT,
+        translated_answers_json TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS backups (
+        id INTEGER PRIMARY KEY,
+        user_id TEXT,
+        qbank_id INTEGER,
+        backup_code TEXT,
+        backup_file_path TEXT,
+        created_at TEXT,
+        restored_at TEXT
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_questions_qbank_qid ON questions(qbank_id, qid);`,
+      `CREATE INDEX IF NOT EXISTS idx_answers_question ON answers(question_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_logs_question ON user_logs(question_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_translations_question_language ON translations(question_id, language);`,
+    ],
+  },
+];
