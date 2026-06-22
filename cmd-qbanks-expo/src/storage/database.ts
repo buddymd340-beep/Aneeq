@@ -14,6 +14,8 @@ import { migrations } from "./schema";
 const db = SQLite.openDatabaseSync("cmd_qbanks.db");
 
 export async function initializeDatabase() {
+  await ensureMigrationTable();
+
   for (const migration of migrations) {
     const applied = await db.getFirstAsync<{ version: number }>(
       "SELECT version FROM schema_migrations WHERE version = ?",
@@ -36,6 +38,13 @@ export async function initializeDatabase() {
   }
 
   await seedSampleData();
+}
+
+async function ensureMigrationTable() {
+  await db.execAsync(`CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+  );`);
 }
 
 async function seedSampleData() {
