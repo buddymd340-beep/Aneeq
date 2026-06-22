@@ -1,6 +1,7 @@
 import CryptoJS from "crypto-js";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
+import * as SQLite from "expo-sqlite";
 
 export type BackupFlag = 0 | 1;
 
@@ -35,6 +36,7 @@ export interface LaunchState {
   filters: FilterState;
   qbankDbPath: string;
   qbankJournalPath: string;
+  demoMediaPath: string;
   messages: string[];
 }
 
@@ -93,12 +95,7 @@ export async function initAppStateFiles() {
     await writeBackupState(todayIsoDate(), 1);
   }
 
-  const db = await FileSystem.getInfoAsync(qbankDbPath(1));
-  if (!db.exists) {
-    await FileSystem.writeAsStringAsync(qbankDbPath(1), "", {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
-  }
+  await createDemoQBankFiles();
 }
 
 export async function runLaunchFlow(): Promise<LaunchState> {
@@ -124,8 +121,160 @@ export async function runLaunchFlow(): Promise<LaunchState> {
     filters,
     qbankDbPath: qbankDbPath(1),
     qbankJournalPath: qbankJournalPath(1),
+    demoMediaPath: `${qbankRoot(1)}/media/questions/portal_venous_system.svg`,
     messages,
   };
+}
+
+export async function createDemoQBankFiles() {
+  await createDemoQBankDatabase();
+
+  const portalSvgPath = `${qbankRoot(1)}/media/questions/portal_venous_system.svg`;
+  const portalInfo = await FileSystem.getInfoAsync(portalSvgPath);
+  if (!portalInfo.exists) {
+    await FileSystem.writeAsStringAsync(portalSvgPath, demoPortalSvg());
+  }
+
+  const explanationPath = `${qbankRoot(1)}/media/explanations/qid_1023_explanation.txt`;
+  const explanationInfo = await FileSystem.getInfoAsync(explanationPath);
+  if (!explanationInfo.exists) {
+    await FileSystem.writeAsStringAsync(
+      explanationPath,
+      "Demo explanation media for QID 1023. Blue linked words open portal_venous_system.svg.",
+    );
+  }
+
+  const labsPath = `${qbankRoot(1)}/media/labs/normal_labs.txt`;
+  const labsInfo = await FileSystem.getInfoAsync(labsPath);
+  if (!labsInfo.exists) {
+    await FileSystem.writeAsStringAsync(
+      labsPath,
+      "Hemoglobin 13.5-17.5 g/dL\nWBC 4,500-11,000/mm3\nPlatelets 150,000-400,000/mm3",
+    );
+  }
+
+  const manifestPath = `${qbankRoot(1)}/media/question_media_manifest.json`;
+  await FileSystem.writeAsStringAsync(
+    manifestPath,
+    JSON.stringify(
+      [
+        {
+          qbank_id: 1,
+          question_id: 23,
+          qid: 1023,
+          media_type: "image/svg+xml",
+          file_name: "portal_venous_system.svg",
+          local_path: portalSvgPath,
+          caption: "Portal venous system",
+          used_in: "explanation",
+        },
+      ],
+      null,
+      2,
+    ),
+  );
+}
+
+async function createDemoQBankDatabase() {
+  try {
+    const demoDb = SQLite.openDatabaseSync(DB_NAME, undefined, qbankRoot(1));
+    await demoDb.execAsync(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS systems (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY,
+        subject_id INTEGER,
+        system_id INTEGER,
+        stem TEXT NOT NULL,
+        explanation TEXT,
+        difficulty INTEGER DEFAULT 2,
+        status INTEGER DEFAULT 0,
+        is_flagged INTEGER DEFAULT 0,
+        time_spent INTEGER DEFAULT 0,
+        last_seen TEXT
+      );
+      CREATE TABLE IF NOT EXISTS answers (
+        id INTEGER PRIMARY KEY,
+        question_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        is_correct INTEGER DEFAULT 0,
+        explanation TEXT,
+        sort_order INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS question_media (
+        id INTEGER PRIMARY KEY,
+        question_id INTEGER,
+        file_name TEXT,
+        local_path TEXT,
+        caption TEXT,
+        used_in TEXT
+      );
+    `);
+    await demoDb.runAsync("INSERT OR REPLACE INTO subjects (id, name) VALUES (?, ?)", [
+      1,
+      "Gastrointestinal & Nutrition",
+    ]);
+    await demoDb.runAsync("INSERT OR REPLACE INTO systems (id, name) VALUES (?, ?)", [
+      1,
+      "Colon cancer",
+    ]);
+    await demoDb.runAsync(
+      `INSERT OR REPLACE INTO questions
+       (id, subject_id, system_id, stem, explanation, difficulty, status, is_flagged, time_spent, last_seen)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        23,
+        1,
+        1,
+        "A 75-year-old man has right-sided abdominal pain, weight loss, colon adenocarcinoma, and isolated liver metastasis. What is the next step?",
+        "Surgical resection of both the primary colon tumor and isolated liver metastasis can be curative.",
+        2,
+        0,
+        0,
+        0,
+        "",
+      ],
+    );
+    const answers = [
+      [1, 23, "Chemotherapy and radiation", 0, "Not preferred for isolated resectable liver metastasis.", 1],
+      [2, 23, "Chemotherapy only", 0, "Not curative when surgery is possible.", 2],
+      [3, 23, "Liver transplantation", 0, "Contraindicated for primary nonhepatic tumors.", 3],
+      [4, 23, "Palliative care only", 0, "Not appropriate if curative surgery is feasible.", 4],
+      [5, 23, "Surgical resection", 1, "Correct.", 5],
+    ];
+    for (const answer of answers) {
+      await demoDb.runAsync(
+        "INSERT OR REPLACE INTO answers (id, question_id, text, is_correct, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+        answer,
+      );
+    }
+    await demoDb.runAsync(
+      "INSERT OR REPLACE INTO question_media (id, question_id, file_name, local_path, caption, used_in) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        1,
+        23,
+        "portal_venous_system.svg",
+        `${qbankRoot(1)}/media/questions/portal_venous_system.svg`,
+        "Portal venous system",
+        "explanation",
+      ],
+    );
+    await demoDb.closeAsync();
+  } catch {
+    const dbInfo = await FileSystem.getInfoAsync(qbankDbPath(1));
+    if (!dbInfo.exists) {
+      await FileSystem.writeAsStringAsync(
+        qbankDbPath(1),
+        "Demo QBank DB placeholder. If Expo cannot create SQLite in this folder on this platform, use cmd_qbanks.db plus media manifest.",
+      );
+    }
+  }
 }
 
 export async function readBackupState(syncIntervalDays = 1): Promise<BackupState> {
@@ -329,6 +478,30 @@ function appendInCondition(
   }
   conditions.push(`${column} IN (${values.map(() => "?").join(",")})`);
   params.push(...values);
+}
+
+function demoPortalSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560">
+  <rect width="520" height="560" fill="#ffffff"/>
+  <text x="190" y="34" font-size="20" font-weight="700" fill="#1f2937">Portal venous system</text>
+  <path d="M150 120 C200 50 330 60 380 120 C330 150 220 155 150 120Z" fill="#a94c38"/>
+  <ellipse cx="320" cy="185" rx="92" ry="44" fill="#f3a076"/>
+  <ellipse cx="430" cy="170" rx="26" ry="58" fill="#7056a6"/>
+  <path d="M180 300 C135 250 160 200 225 216 C280 230 270 290 225 300 C190 308 190 358 235 365 C310 380 350 332 322 290" fill="none" stroke="#f07c55" stroke-width="36" stroke-linecap="round"/>
+  <path d="M345 300 C420 250 465 290 438 360 C420 410 350 410 340 350" fill="none" stroke="#f07c55" stroke-width="36" stroke-linecap="round"/>
+  <path d="M260 170 L260 355" stroke="#285a9b" stroke-width="10"/>
+  <path d="M260 220 C205 215 180 240 160 280" stroke="#285a9b" stroke-width="5" fill="none"/>
+  <path d="M260 235 C330 230 390 255 435 300" stroke="#285a9b" stroke-width="5" fill="none"/>
+  <path d="M260 170 C305 150 345 155 385 172" stroke="#285a9b" stroke-width="5" fill="none"/>
+  <path d="M260 170 C245 130 220 110 180 100" stroke="#285a9b" stroke-width="5" fill="none"/>
+  <text x="35" y="174" font-size="13">Portal vein</text><line x1="120" y1="169" x2="238" y2="172" stroke="#111827"/>
+  <text x="386" y="84" font-size="13">Left gastric vein</text><line x1="471" y1="79" x2="320" y2="144" stroke="#111827"/>
+  <text x="402" y="205" font-size="13">Splenic vein</text><line x1="487" y1="200" x2="330" y2="198" stroke="#111827"/>
+  <text x="38" y="298" font-size="13">Superior mesenteric vein</text><line x1="123" y1="293" x2="238" y2="260" stroke="#111827"/>
+  <text x="44" y="370" font-size="13">Right colic vein</text><line x1="129" y1="365" x2="230" y2="320" stroke="#111827"/>
+  <text x="420" y="360" font-size="13">Left colic vein</text><line x1="505" y1="355" x2="340" y2="328" stroke="#111827"/>
+  <text x="380" y="442" font-size="13">Sigmoid &amp; superior rectal veins</text><line x1="465" y1="437" x2="335" y2="365" stroke="#111827"/>
+</svg>`;
 }
 
 async function ensureDirectory(path: string) {

@@ -87,7 +87,7 @@ export const migrations = [
         used_in TEXT,
         created_at TEXT
       );`,
-      `CREATE TABLE IF NOT EXISTS references (
+      `CREATE TABLE IF NOT EXISTS "references" (
         id INTEGER PRIMARY KEY,
         qbank_id INTEGER,
         question_id INTEGER,
