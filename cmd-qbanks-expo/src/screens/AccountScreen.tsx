@@ -1,14 +1,33 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, useColorScheme, View } from "react-native";
 
 import { CMDButton } from "../components/Controls";
 import { RootStackParamList } from "../navigation/types";
+import {
+  buildQuestionQuery,
+  LaunchState,
+  markSyncComplete,
+  markSyncNeeded,
+  resetFilters,
+  runLaunchFlow,
+  saveDemoLicense,
+} from "../services/appStateFiles";
 import { getTheme } from "../theme/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList>;
 
 export function AccountScreen({ navigation }: Props) {
   const theme = getTheme(useColorScheme());
+  const [launchState, setLaunchState] = useState<LaunchState | null>(null);
+
+  async function refreshLaunchState() {
+    setLaunchState(await runLaunchFlow());
+  }
+
+  useEffect(() => {
+    refreshLaunchState().catch(() => undefined);
+  }, []);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
@@ -67,6 +86,56 @@ export function AccountScreen({ navigation }: Props) {
         <Pressable style={styles.redBar}>
           <Text style={styles.barText}>Delete Temp Files</Text>
         </Pressable>
+
+        <SectionHeader title="BoardVitals/UWorld File State" />
+        <View style={[styles.fileState, { backgroundColor: theme.card }]}>
+          <Text style={styles.stateLine}>Activation: {launchState?.activated ? "Active info.vbe" : "Not activated"}</Text>
+          <Text style={styles.stateLine}>Backup: {launchState?.backup.date ?? "none"} | flag {launchState?.backup.flag ?? 1}</Text>
+          <Text style={styles.stateLine}>Needs sync: {launchState?.backup.needsSync ? "YES" : "NO"}</Text>
+          <Text style={styles.stateLine}>Filters: {JSON.stringify(launchState?.filters ?? {})}</Text>
+          <Text style={styles.statePath}>DB: {launchState?.qbankDbPath}</Text>
+          <Text style={styles.statePath}>Journal: {launchState?.qbankJournalPath}</Text>
+          <Text style={styles.statePath}>
+            Query: {buildQuestionQuery(launchState?.filters ?? { status: [], subjects: [], systems: [], topics: [], mode: [] }).sql}
+          </Text>
+          <View style={styles.fileActions}>
+            <CMDButton
+              onPress={async () => {
+                await saveDemoLicense();
+                await refreshLaunchState();
+              }}
+            >
+              Activate Demo License
+            </CMDButton>
+            <CMDButton
+              variant="secondary"
+              onPress={async () => {
+                await markSyncNeeded();
+                await refreshLaunchState();
+              }}
+            >
+              Mark Sync Needed
+            </CMDButton>
+            <CMDButton
+              variant="ghost"
+              onPress={async () => {
+                await markSyncComplete();
+                await refreshLaunchState();
+              }}
+            >
+              Mark Sync Complete
+            </CMDButton>
+            <CMDButton
+              variant="destructive"
+              onPress={async () => {
+                await resetFilters();
+                await refreshLaunchState();
+              }}
+            >
+              Reset Filters
+            </CMDButton>
+          </View>
+        </View>
 
         <View style={styles.logout}>
           <CMDButton variant="ghost" onPress={() => navigation.replace("Login")}>
@@ -217,5 +286,23 @@ const styles = StyleSheet.create({
   },
   logout: {
     padding: 16,
+  },
+  fileState: {
+    padding: 14,
+    gap: 6,
+  },
+  stateLine: {
+    color: "#202124",
+    fontSize: 14,
+  },
+  statePath: {
+    color: "#6B7280",
+    fontSize: 12,
+  },
+  fileActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
   },
 });

@@ -59,6 +59,9 @@ visual matching once screenshots/video are uploaded.
 - `src/storage/schema.ts`: SQLite migrations for all requested tables.
 - `src/storage/database.ts`: SQLite init and sample seed.
 - `src/types/schema.ts`: TypeScript interfaces matching the database schema.
+- `src/services/appStateFiles.ts`: BoardVitals/UWorld-style state files:
+  `backupstate.dat`, `uwfilters.dat`, `info.vbe`, `crypto_v2.txt`,
+  `crypto_v3.txt`, and `boardvitals-126-2025.db`.
 - `src/services/importer.ts`: QBank DB + media folder import helper.
 - `src/services/ai.ts`: AI explanation helper using current question context only.
 - `src/services/translation.ts`: Translation helper preserving HTML tags and medical terms.
@@ -80,6 +83,114 @@ Then choose:
 - Press `a` for Android emulator
 - Scan QR code with Expo Go
 - Press `w` for web preview
+
+## BoardVitals/UWorld-style file integration
+
+The app now creates and uses the same file names described in your guide.
+
+On app launch, `App.tsx` runs:
+
+1. SQLite initialization
+2. `runLaunchFlow()`
+3. Crypto placeholder creation
+4. License check from `info.vbe`
+5. Backup state read from `backupstate.dat`
+6. Filter restore from `uwfilters.dat`
+7. QBank folder/database path preparation
+
+### Files created in app document storage
+
+```text
+backupstate.dat
+uwfilters.dat
+info.vbe
+crypto_v2.txt
+crypto_v3.txt
+storage/qbanks/qbank_1/boardvitals-126-2025.db
+storage/qbanks/qbank_1/boardvitals-126-2025.db-journal
+storage/qbanks/qbank_1/media/questions/
+storage/qbanks/qbank_1/media/explanations/
+storage/qbanks/qbank_1/media/tables/
+storage/qbanks/qbank_1/media/references/
+storage/qbanks/qbank_1/media/labs/
+storage/qbanks/qbank_1/media/audio/
+storage/qbanks/qbank_1/media/video/
+storage/qbanks/qbank_1/media/pdf/
+```
+
+### Account screen controls
+
+Open **Account** and scroll to:
+
+```text
+BoardVitals/UWorld File State
+```
+
+There you can:
+
+- See if `info.vbe` is activated
+- See `backupstate.dat` date and dirty flag
+- See whether sync is needed
+- See `uwfilters.dat`
+- See the current QBank DB path
+- Activate a demo encrypted license
+- Mark sync needed
+- Mark sync complete
+- Reset filters
+
+### `backupstate.dat`
+
+The Expo implementation writes a Java-serialized string-compatible payload:
+
+```text
+YYYY-MM-DD|0
+YYYY-MM-DD|1
+```
+
+Meaning:
+
+- `0` = clean
+- `1` = dirty, needs sync
+
+### `uwfilters.dat`
+
+Stored under the same file name, but as editable JSON for React Native:
+
+```json
+{
+  "status": [1],
+  "subjects": [],
+  "systems": [],
+  "topics": [],
+  "mode": []
+}
+```
+
+Filter meaning:
+
+- `status: [1]` = unused
+- `status: [3]` = incorrect
+- `subjects: [5, 8]` = subject IDs
+- `mode: [101]` = tutor mode
+
+The helper `buildQuestionQuery()` converts this into a SQLite query.
+
+### `info.vbe`
+
+`info.vbe` is AES-CBC encrypted license JSON. The key reference is stored in:
+
+```text
+crypto_v3.txt
+```
+
+`crypto_v2.txt` is initialized for legacy migration support. The Account screen
+has an **Activate Demo License** button that creates a valid encrypted
+`info.vbe` for testing.
+
+### SQLite journal
+
+`boardvitals-126-2025.db-journal` is treated as SQLite-managed. The app does
+not read/write it directly.
 
 ## Supabase setup
 
@@ -118,7 +229,7 @@ The migration includes these tables:
 ```text
 /storage/qbanks/
   /qbank_1/
-    qbank.db
+    boardvitals-126-2025.db
     /media/
       /questions/
       /explanations/
