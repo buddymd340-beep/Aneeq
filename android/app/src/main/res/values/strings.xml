@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Aneeq Medical Study</string>
-    <string name="title_activity_main">Aneeq Medical Study</string>
-    <string name="package_name">com.aneeq.medicalstudy</string>
-    <string name="custom_url_scheme">com.aneeq.medicalstudy</string>
-</resources>
